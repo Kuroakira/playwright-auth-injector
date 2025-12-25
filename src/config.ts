@@ -1,5 +1,5 @@
 /**
- * 設定ファイル読み込み
+ * Config file loading
  */
 
 import { pathToFileURL } from 'node:url';
@@ -8,18 +8,18 @@ import { resolve } from 'node:path';
 import type { AuthConfig } from './types.js';
 import { ConfigNotFoundError, ConfigInvalidError } from './errors.js';
 
-/** 設定ファイルの候補パス */
+/** Config file candidate paths */
 const CONFIG_FILE_NAMES = [
   'playwright-auth.config.ts',
   'playwright-auth.config.js',
   'playwright-auth.config.mjs',
 ];
 
-/** キャッシュされた設定 */
+/** Cached config */
 let cachedConfig: AuthConfig | null = null;
 
 /**
- * 設定ファイルのパスを探す
+ * Find config file path
  */
 function findConfigPath(cwd: string = process.cwd()): string | null {
   for (const fileName of CONFIG_FILE_NAMES) {
@@ -32,10 +32,10 @@ function findConfigPath(cwd: string = process.cwd()): string | null {
 }
 
 /**
- * 設定を読み込む
+ * Load config
  */
 export async function loadConfig(cwd: string = process.cwd()): Promise<AuthConfig> {
-  // キャッシュがあれば返す
+  // Return cached config if available
   if (cachedConfig) {
     return cachedConfig;
   }
@@ -49,12 +49,12 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<AuthConfi
   }
 
   try {
-    // ESMとしてインポート
+    // Import as ESM
     const configUrl = pathToFileURL(configPath).href;
     const module = await import(configUrl);
     const config = module.default as AuthConfig;
 
-    // バリデーション
+    // Validate
     validateConfig(config);
 
     cachedConfig = config;
@@ -64,34 +64,34 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<AuthConfi
       throw error;
     }
     throw new ConfigInvalidError(
-      `設定ファイルの読み込みに失敗しました: ${error instanceof Error ? error.message : String(error)}`
+      `Failed to load config file: ${error instanceof Error ? error.message : String(error)}`
     );
   }
 }
 
 /**
- * 設定をバリデーション
+ * Validate config
  */
 function validateConfig(config: unknown): asserts config is AuthConfig {
   if (!config || typeof config !== 'object') {
-    throw new ConfigInvalidError('設定はオブジェクトである必要があります');
+    throw new ConfigInvalidError('Config must be an object');
   }
 
   const c = config as Record<string, unknown>;
 
-  // provider必須
+  // provider is required
   if (!c.provider) {
-    throw new ConfigInvalidError('provider は必須です', 'provider');
+    throw new ConfigInvalidError('provider is required', 'provider');
   }
 
   if (c.provider !== 'firebase' && c.provider !== 'supabase') {
     throw new ConfigInvalidError(
-      `provider は 'firebase' または 'supabase' である必要があります。受け取った値: ${c.provider}`,
+      `provider must be 'firebase' or 'supabase'. Got: ${c.provider}`,
       'provider'
     );
   }
 
-  // プロバイダー固有の設定をバリデーション
+  // Validate provider-specific config
   if (c.provider === 'firebase') {
     validateFirebaseConfig(c.firebase);
   } else if (c.provider === 'supabase') {
@@ -100,66 +100,66 @@ function validateConfig(config: unknown): asserts config is AuthConfig {
 }
 
 /**
- * Firebase設定をバリデーション
+ * Validate Firebase config
  */
 function validateFirebaseConfig(firebase: unknown): void {
   if (!firebase || typeof firebase !== 'object') {
-    throw new ConfigInvalidError('firebase 設定が必要です', 'firebase');
+    throw new ConfigInvalidError('firebase config is required', 'firebase');
   }
 
   const f = firebase as Record<string, unknown>;
 
   if (!f.serviceAccount || typeof f.serviceAccount !== 'string') {
     throw new ConfigInvalidError(
-      'serviceAccount は文字列である必要があります',
+      'serviceAccount must be a string',
       'firebase.serviceAccount'
     );
   }
 
   if (!f.apiKey || typeof f.apiKey !== 'string') {
     throw new ConfigInvalidError(
-      'apiKey は文字列である必要があります',
+      'apiKey must be a string',
       'firebase.apiKey'
     );
   }
 
   if (!f.uid || typeof f.uid !== 'string') {
     throw new ConfigInvalidError(
-      'uid は文字列である必要があります',
+      'uid must be a string',
       'firebase.uid'
     );
   }
 }
 
 /**
- * Supabase設定をバリデーション
+ * Validate Supabase config
  */
 function validateSupabaseConfig(supabase: unknown): void {
   if (!supabase || typeof supabase !== 'object') {
-    throw new ConfigInvalidError('supabase 設定が必要です', 'supabase');
+    throw new ConfigInvalidError('supabase config is required', 'supabase');
   }
 
   const s = supabase as Record<string, unknown>;
 
   if (!s.url || typeof s.url !== 'string') {
-    throw new ConfigInvalidError('url は文字列である必要があります', 'supabase.url');
+    throw new ConfigInvalidError('url must be a string', 'supabase.url');
   }
 
   if (!s.anonKey || typeof s.anonKey !== 'string') {
-    throw new ConfigInvalidError('anonKey は文字列である必要があります', 'supabase.anonKey');
+    throw new ConfigInvalidError('anonKey must be a string', 'supabase.anonKey');
   }
 
   if (!s.email || typeof s.email !== 'string') {
-    throw new ConfigInvalidError('email は文字列である必要があります', 'supabase.email');
+    throw new ConfigInvalidError('email must be a string', 'supabase.email');
   }
 
   if (!s.password || typeof s.password !== 'string') {
-    throw new ConfigInvalidError('password は文字列である必要があります', 'supabase.password');
+    throw new ConfigInvalidError('password must be a string', 'supabase.password');
   }
 }
 
 /**
- * キャッシュをクリア（テスト用）
+ * Clear config cache (for testing)
  */
 export function clearConfigCache(): void {
   cachedConfig = null;

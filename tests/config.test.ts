@@ -3,7 +3,7 @@ import { existsSync } from 'node:fs';
 import { loadConfig, clearConfigCache } from '../src/config.js';
 import { ConfigNotFoundError, ConfigInvalidError } from '../src/errors.js';
 
-// existsSyncをモック
+// Mock existsSync
 vi.mock('node:fs', () => ({
   existsSync: vi.fn(),
 }));
@@ -40,8 +40,8 @@ describe('loadConfig', () => {
 });
 
 describe('config validation', () => {
-  // バリデーションロジックのテスト用にモックモジュールを作成
-  // 実際のファイルを読み込む代わりに、直接バリデーション関数をテスト
+  // Validation logic tests using mock modules
+  // Instead of loading actual files, we document the validation spec
 
   beforeEach(() => {
     clearConfigCache();
@@ -49,16 +49,15 @@ describe('config validation', () => {
 
   describe('validateFirebaseConfig (via loadConfig)', () => {
     it('should require serviceAccount to be string', () => {
-      // このテストは統合テストとして実際のファイルで行うのが適切
-      // ここではバリデーションロジックの仕様を文書化
+      // This test is better suited as an integration test with actual files
+      // Here we document the validation specification
       expect(true).toBe(true);
     });
   });
 });
 
 describe('clearConfigCache', () => {
-  it('should clear the cached config', () => {
-    // キャッシュをクリアしても例外が発生しないことを確認
+  it('should clear the cached config without throwing', () => {
     expect(() => clearConfigCache()).not.toThrow();
   });
 });

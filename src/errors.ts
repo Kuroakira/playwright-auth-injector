@@ -1,8 +1,8 @@
 /**
- * エラークラス定義
+ * Error class definitions
  */
 
-/** エラーコード */
+/** Error codes */
 export type AuthErrorCode =
   | 'CONFIG_NOT_FOUND'
   | 'CONFIG_INVALID'
@@ -10,7 +10,7 @@ export type AuthErrorCode =
   | 'TOKEN_EXCHANGE_FAILED'
   | 'INJECTION_FAILED';
 
-/** 認証エラー基底クラス */
+/** Base authentication error class */
 export class AuthError extends Error {
   constructor(
     message: string,
@@ -20,16 +20,16 @@ export class AuthError extends Error {
     super(message);
     this.name = 'AuthError';
 
-    // ES5互換のためプロトタイプチェーンを修正
+    // Fix prototype chain for ES5 compatibility
     Object.setPrototypeOf(this, AuthError.prototype);
   }
 }
 
-/** 設定が見つからないエラー */
+/** Config file not found error */
 export class ConfigNotFoundError extends AuthError {
   constructor(searchPaths: string[]) {
     super(
-      `設定ファイルが見つかりません。以下のパスを探しました:\n${searchPaths.map(p => `  - ${p}`).join('\n')}`,
+      `Config file not found. Searched paths:\n${searchPaths.map(p => `  - ${p}`).join('\n')}`,
       'CONFIG_NOT_FOUND'
     );
     this.name = 'ConfigNotFoundError';
@@ -37,11 +37,11 @@ export class ConfigNotFoundError extends AuthError {
   }
 }
 
-/** 設定が無効なエラー */
+/** Invalid config error */
 export class ConfigInvalidError extends AuthError {
   constructor(message: string, public readonly field?: string) {
     super(
-      field ? `設定エラー [${field}]: ${message}` : `設定エラー: ${message}`,
+      field ? `Config error [${field}]: ${message}` : `Config error: ${message}`,
       'CONFIG_INVALID'
     );
     this.name = 'ConfigInvalidError';
@@ -49,7 +49,7 @@ export class ConfigInvalidError extends AuthError {
   }
 }
 
-/** 認証失敗エラー */
+/** Authentication failed error */
 export class AuthenticationError extends AuthError {
   constructor(message: string, cause?: Error) {
     super(message, 'AUTH_FAILED', cause);
@@ -58,7 +58,7 @@ export class AuthenticationError extends AuthError {
   }
 }
 
-/** トークン交換失敗エラー */
+/** Token exchange failed error */
 export class TokenExchangeError extends AuthError {
   constructor(
     message: string,
@@ -71,7 +71,7 @@ export class TokenExchangeError extends AuthError {
   }
 }
 
-/** 注入失敗エラー */
+/** Injection failed error */
 export class InjectionError extends AuthError {
   constructor(message: string, cause?: Error) {
     super(message, 'INJECTION_FAILED', cause);

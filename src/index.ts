@@ -1,7 +1,7 @@
 /**
  * playwright-auth-injector
  *
- * Playwright E2Eテストで認証UIをスキップし、認証状態を直接注入する
+ * Skip authentication UI in Playwright E2E tests by injecting auth state directly
  */
 
 import type { Page } from '@playwright/test';
@@ -10,7 +10,7 @@ import { loadConfig } from './config.js';
 import { injectFirebaseAuth } from './firebase.js';
 import { ConfigInvalidError } from './errors.js';
 
-// 型をre-export
+// Re-export types
 export type {
   AuthConfig,
   FirebaseConfig,
@@ -20,7 +20,7 @@ export type {
   ProfileOverride,
 } from './types.js';
 
-// エラーをre-export
+// Re-export errors
 export {
   AuthError,
   AuthErrorCode,
@@ -32,7 +32,7 @@ export {
 } from './errors.js';
 
 /**
- * 設定ファイルの型安全なヘルパー
+ * Type-safe config helper
  *
  * @example
  * ```typescript
@@ -54,11 +54,11 @@ export function defineConfig(config: AuthConfig): AuthConfig {
 }
 
 /**
- * 認証状態をブラウザに注入する
+ * Inject authentication state into the browser
  *
- * @param page - Playwright Page オブジェクト
- * @param options - オプション設定
- * @throws AuthError - 認証失敗時
+ * @param page - Playwright Page object
+ * @param options - Optional settings
+ * @throws AuthError - When authentication fails
  *
  * @example
  * ```typescript
@@ -74,7 +74,7 @@ export function defineConfig(config: AuthConfig): AuthConfig {
  *
  * @example
  * ```typescript
- * // プロファイル指定
+ * // With profile
  * await injectAuth(page, { profile: 'admin' });
  * ```
  */
@@ -82,10 +82,10 @@ export async function injectAuth(
   page: Page,
   options: InjectAuthOptions = {}
 ): Promise<void> {
-  // 設定を読み込む
+  // Load config
   const config = await loadConfig();
 
-  // プロファイルが指定されている場合、設定をオーバーライド
+  // Override config if profile is specified
   let effectiveConfig = config;
   if (options.profile && config.profiles?.[options.profile]) {
     const profileOverride = config.profiles[options.profile];
@@ -100,11 +100,11 @@ export async function injectAuth(
     };
   }
 
-  // プロバイダーに応じて認証を実行
+  // Execute authentication based on provider
   switch (effectiveConfig.provider) {
     case 'firebase':
       if (!effectiveConfig.firebase) {
-        throw new ConfigInvalidError('firebase 設定が必要です', 'firebase');
+        throw new ConfigInvalidError('firebase config is required', 'firebase');
       }
       await injectFirebaseAuth(page, effectiveConfig.firebase, {
         debug: effectiveConfig.debug,
@@ -113,15 +113,15 @@ export async function injectAuth(
       break;
 
     case 'supabase':
-      // TODO: Supabase実装
+      // TODO: Implement Supabase
       throw new ConfigInvalidError(
-        'Supabase はまだ実装されていません。Firebase を使用してください。',
+        'Supabase is not yet implemented. Please use Firebase.',
         'provider'
       );
 
     default:
       throw new ConfigInvalidError(
-        `未対応のプロバイダー: ${effectiveConfig.provider}`,
+        `Unsupported provider: ${effectiveConfig.provider}`,
         'provider'
       );
   }

@@ -56,14 +56,14 @@ describe('ConfigInvalidError', () => {
     const error = new ConfigInvalidError('invalid format');
 
     expect(error.code).toBe('CONFIG_INVALID');
-    expect(error.message).toBe('設定エラー: invalid format');
+    expect(error.message).toBe('Config error: invalid format');
     expect(error.field).toBeUndefined();
   });
 
   it('should create error with field', () => {
     const error = new ConfigInvalidError('is required', 'firebase.apiKey');
 
-    expect(error.message).toBe('設定エラー [firebase.apiKey]: is required');
+    expect(error.message).toBe('Config error [firebase.apiKey]: is required');
     expect(error.field).toBe('firebase.apiKey');
   });
 });

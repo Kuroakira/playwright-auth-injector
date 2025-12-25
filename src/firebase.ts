@@ -1,5 +1,5 @@
 /**
- * Firebase認証ロジック
+ * Firebase authentication logic
  */
 
 import type { Page } from '@playwright/test';
@@ -7,11 +7,11 @@ import admin from 'firebase-admin';
 import type { FirebaseConfig, FirebaseAuthUser, FirebaseTokenResponse } from './types.js';
 import { AuthenticationError, TokenExchangeError, InjectionError } from './errors.js';
 
-/** Firebase Admin SDK 初期化済みフラグ */
+/** Firebase Admin SDK initialized flag */
 let initialized = false;
 
 /**
- * Firebase Admin SDK を初期化
+ * Initialize Firebase Admin SDK
  */
 function initializeAdmin(serviceAccountJson: string): void {
   if (initialized) return;
@@ -24,28 +24,28 @@ function initializeAdmin(serviceAccountJson: string): void {
     initialized = true;
   } catch (error) {
     throw new AuthenticationError(
-      `Firebase Admin SDK の初期化に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to initialize Firebase Admin SDK: ${error instanceof Error ? error.message : String(error)}`,
       error instanceof Error ? error : undefined
     );
   }
 }
 
 /**
- * カスタムトークンを生成
+ * Create custom token
  */
 async function createCustomToken(uid: string): Promise<string> {
   try {
     return await admin.auth().createCustomToken(uid);
   } catch (error) {
     throw new AuthenticationError(
-      `カスタムトークンの生成に失敗しました (UID: ${uid}): ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to create custom token (UID: ${uid}): ${error instanceof Error ? error.message : String(error)}`,
       error instanceof Error ? error : undefined
     );
   }
 }
 
 /**
- * カスタムトークンをIDトークンに交換
+ * Exchange custom token for ID token
  */
 async function exchangeCustomToken(
   customToken: string,
@@ -66,7 +66,7 @@ async function exchangeCustomToken(
     if (!response.ok) {
       const errorBody = await response.text();
       throw new TokenExchangeError(
-        `Firebase REST API エラー: ${errorBody}`,
+        `Firebase REST API error: ${errorBody}`,
         response.status
       );
     }
@@ -78,7 +78,7 @@ async function exchangeCustomToken(
       throw error;
     }
     throw new TokenExchangeError(
-      `トークン交換リクエストに失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+      `Token exchange request failed: ${error instanceof Error ? error.message : String(error)}`,
       undefined,
       error instanceof Error ? error : undefined
     );
@@ -86,21 +86,21 @@ async function exchangeCustomToken(
 }
 
 /**
- * ユーザー情報を取得
+ * Get user record
  */
 async function getUserRecord(uid: string): Promise<admin.auth.UserRecord> {
   try {
     return await admin.auth().getUser(uid);
   } catch (error) {
     throw new AuthenticationError(
-      `ユーザー情報の取得に失敗しました (UID: ${uid}): ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to get user info (UID: ${uid}): ${error instanceof Error ? error.message : String(error)}`,
       error instanceof Error ? error : undefined
     );
   }
 }
 
 /**
- * IndexedDBに注入する認証データを作成
+ * Create auth data for IndexedDB injection
  */
 function createAuthData(
   uid: string,
@@ -142,10 +142,10 @@ function createAuthData(
 }
 
 /**
- * IndexedDB注入スクリプトを生成
+ * Create IndexedDB injection script
  */
 function createInjectionScript(authData: { fbase_key: string; value: FirebaseAuthUser }): string {
-  // スクリプト内でJSONをパースするためにシリアライズ
+  // Serialize for parsing inside the script
   const serializedData = JSON.stringify(authData);
 
   return `
@@ -175,7 +175,7 @@ function createInjectionScript(authData: { fbase_key: string; value: FirebaseAut
 }
 
 /**
- * Firebase認証を実行してブラウザに注入
+ * Execute Firebase authentication and inject into browser
  */
 export async function injectFirebaseAuth(
   page: Page,
@@ -185,53 +185,53 @@ export async function injectFirebaseAuth(
   const { debug = false, waitAfter = 2000 } = options;
 
   if (debug) {
-    console.log('[playwright-auth-injector] Firebase認証を開始...');
+    console.log('[playwright-auth-injector] Starting Firebase authentication...');
   }
 
-  // 1. Admin SDK 初期化
+  // 1. Initialize Admin SDK
   initializeAdmin(config.serviceAccount);
-  if (debug) console.log('[playwright-auth-injector] Admin SDK 初期化完了');
+  if (debug) console.log('[playwright-auth-injector] Admin SDK initialized');
 
-  // 2. カスタムトークン生成
+  // 2. Create custom token
   const customToken = await createCustomToken(config.uid);
-  if (debug) console.log('[playwright-auth-injector] カスタムトークン生成完了');
+  if (debug) console.log('[playwright-auth-injector] Custom token created');
 
-  // 3. IDトークンに交換
+  // 3. Exchange for ID token
   const tokenResponse = await exchangeCustomToken(customToken, config.apiKey);
-  if (debug) console.log('[playwright-auth-injector] トークン交換完了');
+  if (debug) console.log('[playwright-auth-injector] Token exchange complete');
 
-  // 4. ユーザー情報取得
+  // 4. Get user info
   const userRecord = await getUserRecord(config.uid);
-  if (debug) console.log('[playwright-auth-injector] ユーザー情報取得完了');
+  if (debug) console.log('[playwright-auth-injector] User info retrieved');
 
-  // 5. 認証データ作成
+  // 5. Create auth data
   const authData = createAuthData(config.uid, config.apiKey, tokenResponse, userRecord);
-  if (debug) console.log('[playwright-auth-injector] 認証データ作成完了');
+  if (debug) console.log('[playwright-auth-injector] Auth data created');
 
-  // 6. 注入スクリプトを追加
+  // 6. Add injection script
   const script = createInjectionScript(authData);
   try {
     await page.addInitScript(script);
-    if (debug) console.log('[playwright-auth-injector] 注入スクリプト追加完了');
+    if (debug) console.log('[playwright-auth-injector] Injection script added');
   } catch (error) {
     throw new InjectionError(
-      `IndexedDB注入スクリプトの追加に失敗しました: ${error instanceof Error ? error.message : String(error)}`,
+      `Failed to add IndexedDB injection script: ${error instanceof Error ? error.message : String(error)}`,
       error instanceof Error ? error : undefined
     );
   }
 
-  // 7. ページに移動して認証を反映
+  // 7. Navigate to page to apply auth
   try {
     await page.goto('/', { waitUntil: 'networkidle' });
-    if (debug) console.log('[playwright-auth-injector] ページ遷移完了');
+    if (debug) console.log('[playwright-auth-injector] Page navigation complete');
   } catch (error) {
-    // goto失敗は致命的ではない（baseURLが設定されていない場合など）
+    // goto failure is not fatal (e.g., baseURL not configured)
     if (debug) {
-      console.log('[playwright-auth-injector] ページ遷移をスキップ:', error instanceof Error ? error.message : String(error));
+      console.log('[playwright-auth-injector] Page navigation skipped:', error instanceof Error ? error.message : String(error));
     }
   }
 
-  // 8. 認証状態が反映されるまで待機
+  // 8. Wait for auth state to be applied
   await page.waitForTimeout(waitAfter);
-  if (debug) console.log('[playwright-auth-injector] Firebase認証完了');
+  if (debug) console.log('[playwright-auth-injector] Firebase authentication complete');
 }

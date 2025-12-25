@@ -1,41 +1,41 @@
 /**
- * 型定義
+ * Type definitions
  */
 
-/** サポートするプロバイダー */
+/** Supported providers */
 export type Provider = 'firebase' | 'supabase';
 
-/** メイン設定 */
+/** Main configuration */
 export interface AuthConfig {
-  /** 使用するプロバイダー */
+  /** Provider to use */
   provider: Provider;
 
-  /** Firebase設定 */
+  /** Firebase configuration */
   firebase?: FirebaseConfig;
 
-  /** Supabase設定 */
+  /** Supabase configuration */
   supabase?: SupabaseConfig;
 
-  /** 複数ユーザープロファイル（オプション） */
+  /** Multiple user profiles (optional) */
   profiles?: Record<string, ProfileOverride>;
 
-  /** デバッグモード */
+  /** Debug mode */
   debug?: boolean;
 }
 
-/** Firebase設定 */
+/** Firebase configuration */
 export interface FirebaseConfig {
-  /** サービスアカウントJSON（文字列） */
+  /** Service account JSON (string) */
   serviceAccount: string;
 
   /** Firebase Web API Key */
   apiKey: string;
 
-  /** テストユーザーのUID */
+  /** Test user's UID */
   uid: string;
 }
 
-/** Supabase設定 */
+/** Supabase configuration */
 export interface SupabaseConfig {
   /** Supabase Project URL */
   url: string;
@@ -43,40 +43,40 @@ export interface SupabaseConfig {
   /** Supabase Anon Key */
   anonKey: string;
 
-  /** テストユーザーのメールアドレス */
+  /** Test user's email address */
   email: string;
 
-  /** テストユーザーのパスワード */
+  /** Test user's password */
   password: string;
 }
 
-/** プロファイルオーバーライド */
+/** Profile override */
 export interface ProfileOverride {
-  /** Firebase: 別のUID */
+  /** Firebase: alternative UID */
   uid?: string;
 
-  /** Supabase: 別の認証情報 */
+  /** Supabase: alternative credentials */
   email?: string;
   password?: string;
 }
 
-/** injectAuth オプション */
+/** injectAuth options */
 export interface InjectAuthOptions {
-  /** 使用するプロファイル名 */
+  /** Profile name to use */
   profile?: string;
 
-  /** 注入後の待機時間（ms）デフォルト: 2000 */
+  /** Wait time after injection (ms) default: 2000 */
   waitAfter?: number;
 }
 
-/** Firebase REST API レスポンス */
+/** Firebase REST API response */
 export interface FirebaseTokenResponse {
   idToken: string;
   refreshToken: string;
   expiresIn: string;
 }
 
-/** Firebase ユーザー情報（IndexedDBに保存する形式） */
+/** Firebase user info (format stored in IndexedDB) */
 export interface FirebaseAuthUser {
   uid: string;
   email: string | null;
@@ -94,7 +94,7 @@ export interface FirebaseAuthUser {
   appName: string;
 }
 
-/** プロバイダーユーザー情報 */
+/** Provider user info */
 export interface ProviderUserInfo {
   providerId: string;
   uid: string;

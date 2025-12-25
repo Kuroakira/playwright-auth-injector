@@ -1,29 +1,29 @@
 # playwright-auth-injector
 
-Playwright E2Eテストで認証UIをスキップし、認証状態を直接ブラウザに注入する。
+Skip authentication UI in Playwright E2E tests by injecting auth state directly into the browser.
 
-## 特徴
+## Features
 
-- **シンプルなAPI**: 設定ファイル + 1行で認証完了
-- **UIスキップ**: ログイン画面の操作不要で高速テスト
-- **セキュア**: テスト専用エンドポイント不要、本番コード変更なし
+- **Simple API**: Config file + one line to authenticate
+- **UI Skip**: No login form interaction, faster tests
+- **Secure**: No test-only endpoints, no production code changes
 
-## 対応プロバイダー
+## Supported Providers
 
 - [x] Firebase Authentication
 - [ ] Supabase (Coming soon)
 - [ ] AWS Amplify (Planned)
 - [ ] Auth0 (Planned)
 
-## インストール
+## Installation
 
 ```bash
 npm install -D playwright-auth-injector
 ```
 
-## セットアップ
+## Setup
 
-### 1. 設定ファイルを作成
+### 1. Create config file
 
 ```typescript
 // playwright-auth.config.ts
@@ -39,7 +39,7 @@ export default defineConfig({
 });
 ```
 
-### 2. 認証セットアップを作成
+### 2. Create auth setup
 
 ```typescript
 // e2e/tests/auth.setup.ts
@@ -52,7 +52,7 @@ setup('authenticate', async ({ page }) => {
 });
 ```
 
-### 3. Playwright設定に追加
+### 3. Configure Playwright
 
 ```typescript
 // playwright.config.ts
@@ -74,45 +74,45 @@ export default defineConfig({
 });
 ```
 
-### 4. テストを書く
+### 4. Write tests
 
 ```typescript
 // e2e/tests/dashboard.spec.ts
 import { test, expect } from '@playwright/test';
 
-test('認証済みページにアクセス', async ({ page }) => {
+test('access authenticated page', async ({ page }) => {
   await page.goto('/dashboard');
   await expect(page.locator('h1')).toContainText('Dashboard');
 });
 ```
 
-## 環境変数
+## Environment Variables
 
-| 変数名 | 説明 |
-|--------|------|
-| `FIREBASE_SERVICE_ACCOUNT` | サービスアカウントJSON（1行に整形） |
+| Variable | Description |
+|----------|-------------|
+| `FIREBASE_SERVICE_ACCOUNT` | Service account JSON (single line) |
 | `FIREBASE_API_KEY` | Firebase Web API Key |
-| `TEST_USER_UID` | テストユーザーのUID |
+| `TEST_USER_UID` | Test user's UID |
 
 ## API
 
 ### `injectAuth(page, options?)`
 
-認証状態をブラウザに注入する。
+Inject authentication state into the browser.
 
 ```typescript
 await injectAuth(page);
 
-// オプション
+// With options
 await injectAuth(page, {
-  profile: 'admin',    // プロファイル名
-  waitAfter: 3000,     // 注入後の待機時間（ms）
+  profile: 'admin',    // Profile name
+  waitAfter: 3000,     // Wait time after injection (ms)
 });
 ```
 
 ### `defineConfig(config)`
 
-型安全な設定ヘルパー。
+Type-safe config helper.
 
 ## License
 

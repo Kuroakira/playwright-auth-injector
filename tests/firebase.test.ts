@@ -1,7 +1,7 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import type { Page } from '@playwright/test';
 
-// firebase-adminをモック
+// Mock firebase-admin
 vi.mock('firebase-admin', () => {
   const mockAuth = {
     createCustomToken: vi.fn(),
@@ -20,7 +20,7 @@ vi.mock('firebase-admin', () => {
   };
 });
 
-// global fetchをモック
+// Mock global fetch
 const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
@@ -49,7 +49,7 @@ describe('injectFirebaseAuth', () => {
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // firebase-admin モックの設定
+    // Configure firebase-admin mock
     const mockAuth = admin.auth();
     vi.mocked(mockAuth.createCustomToken).mockResolvedValue('mock-custom-token');
     vi.mocked(mockAuth.getUser).mockResolvedValue({
@@ -66,7 +66,7 @@ describe('injectFirebaseAuth', () => {
       toJSON: () => ({}),
     } as any);
 
-    // fetch モックの設定
+    // Configure fetch mock
     mockFetch.mockResolvedValue({
       ok: true,
       json: async () => ({

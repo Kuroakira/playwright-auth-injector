@@ -1,31 +1,31 @@
 /**
- * playwright-auth-injector 設定ファイルのサンプル
+ * playwright-auth-injector sample config file
  *
- * このファイルをコピーして `playwright-auth.config.ts` を作成してください。
+ * Copy this file and create `playwright-auth.config.ts`.
  */
 
 import { defineConfig } from 'playwright-auth-injector';
 
 export default defineConfig({
-  // 使用するプロバイダー: 'firebase' | 'supabase'
+  // Provider to use: 'firebase' | 'supabase'
   provider: 'firebase',
 
-  // デバッグモード（コンソールにログを出力）
+  // Debug mode (output logs to console)
   debug: false,
 
-  // Firebase設定
+  // Firebase configuration
   firebase: {
-    // サービスアカウントJSON（環境変数から読み込み）
+    // Service account JSON (load from environment variable)
     serviceAccount: process.env.FIREBASE_SERVICE_ACCOUNT!,
 
     // Firebase Web API Key
     apiKey: process.env.FIREBASE_API_KEY!,
 
-    // テストユーザーのUID
+    // Test user's UID
     uid: process.env.TEST_USER_UID!,
   },
 
-  // 複数ユーザープロファイル（オプション）
+  // Multiple user profiles (optional)
   // profiles: {
   //   admin: { uid: process.env.ADMIN_UID },
   //   user: { uid: process.env.USER_UID },
