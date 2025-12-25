@@ -1,0 +1,9 @@
+node_modules/
+dist/
+*.log
+.DS_Store
+
+# Auth files
+playwright-auth.config.ts
+playwright.env.json
+e2e/.auth/

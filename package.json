@@ -1,0 +1,51 @@
+{
+  "name": "playwright-auth-injector",
+  "version": "0.1.0",
+  "description": "Skip authentication UI in Playwright E2E tests by injecting auth state directly",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "dev": "tsc --watch",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "playwright",
+    "authentication",
+    "e2e",
+    "testing",
+    "firebase",
+    "supabase"
+  ],
+  "author": "",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Kuroakira/playwright-auth-injector.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Kuroakira/playwright-auth-injector/issues"
+  },
+  "homepage": "https://github.com/Kuroakira/playwright-auth-injector#readme",
+  "peerDependencies": {
+    "@playwright/test": ">=1.40.0"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.6.0"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.57.0",
+    "@types/node": "^25.0.3",
+    "typescript": "^5.9.3"
+  }
+}
