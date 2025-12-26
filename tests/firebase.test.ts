@@ -25,10 +25,12 @@ const mockFetch = vi.fn();
 vi.stubGlobal('fetch', mockFetch);
 
 import admin from 'firebase-admin';
-import { injectFirebaseAuth } from '../src/firebase.js';
-import { AuthenticationError, TokenExchangeError } from '../src/errors.js';
+import { FirebaseAuthProvider } from '../src/providers/firebase.js';
+import { AuthenticationError, TokenExchangeError, ConfigInvalidError } from '../src/errors.js';
 
-describe('injectFirebaseAuth', () => {
+describe('FirebaseAuthProvider', () => {
+  const provider = new FirebaseAuthProvider();
+
   const mockPage: Partial<Page> = {
     addInitScript: vi.fn(),
     goto: vi.fn(),
@@ -81,51 +83,80 @@ describe('injectFirebaseAuth', () => {
     vi.restoreAllMocks();
   });
 
-  it('should call addInitScript with injection script', async () => {
-    await injectFirebaseAuth(mockPage as Page, validConfig);
+  describe('validateConfig', () => {
+    it('should validate a valid config', () => {
+      const result = provider.validateConfig(validConfig);
+      expect(result).toEqual(validConfig);
+    });
 
-    expect(mockPage.addInitScript).toHaveBeenCalled();
-    const scriptArg = vi.mocked(mockPage.addInitScript).mock.calls[0][0];
-    expect(typeof scriptArg).toBe('string');
-    expect(scriptArg).toContain('indexedDB');
-    expect(scriptArg).toContain('firebaseLocalStorageDb');
+    it('should throw ConfigInvalidError when config is missing', () => {
+      expect(() => provider.validateConfig(null)).toThrow(ConfigInvalidError);
+      expect(() => provider.validateConfig(undefined)).toThrow(ConfigInvalidError);
+    });
+
+    it('should throw ConfigInvalidError when serviceAccount is missing', () => {
+      const config = { apiKey: 'key', uid: 'uid' };
+      expect(() => provider.validateConfig(config)).toThrow(ConfigInvalidError);
+    });
+
+    it('should throw ConfigInvalidError when apiKey is missing', () => {
+      const config = { serviceAccount: '{}', uid: 'uid' };
+      expect(() => provider.validateConfig(config)).toThrow(ConfigInvalidError);
+    });
+
+    it('should throw ConfigInvalidError when uid is missing', () => {
+      const config = { serviceAccount: '{}', apiKey: 'key' };
+      expect(() => provider.validateConfig(config)).toThrow(ConfigInvalidError);
+    });
   });
 
-  it('should call Firebase Admin createCustomToken', async () => {
-    await injectFirebaseAuth(mockPage as Page, validConfig);
+  describe('inject', () => {
+    it('should call addInitScript with function and auth data', async () => {
+      await provider.inject(mockPage as Page, validConfig);
 
-    const mockAuth = admin.auth();
-    expect(mockAuth.createCustomToken).toHaveBeenCalledWith('test-uid');
-  });
+      expect(mockPage.addInitScript).toHaveBeenCalled();
+      const [fn, arg] = vi.mocked(mockPage.addInitScript).mock.calls[0];
+      expect(typeof fn).toBe('function');
+      expect(arg).toHaveProperty('fbase_key');
+      expect(arg).toHaveProperty('value');
+    });
 
-  it('should call Firebase REST API for token exchange', async () => {
-    await injectFirebaseAuth(mockPage as Page, validConfig);
+    it('should call Firebase Admin createCustomToken', async () => {
+      await provider.inject(mockPage as Page, validConfig);
 
-    expect(mockFetch).toHaveBeenCalledWith(
-      expect.stringContaining('identitytoolkit.googleapis.com'),
-      expect.objectContaining({
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-      })
-    );
-  });
+      const mockAuth = admin.auth();
+      expect(mockAuth.createCustomToken).toHaveBeenCalledWith('test-uid');
+    });
 
-  it('should call page.goto after injection', async () => {
-    await injectFirebaseAuth(mockPage as Page, validConfig);
+    it('should call Firebase REST API for token exchange', async () => {
+      await provider.inject(mockPage as Page, validConfig);
 
-    expect(mockPage.goto).toHaveBeenCalledWith('/', { waitUntil: 'networkidle' });
-  });
+      expect(mockFetch).toHaveBeenCalledWith(
+        expect.stringContaining('identitytoolkit.googleapis.com'),
+        expect.objectContaining({
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+        })
+      );
+    });
 
-  it('should wait after injection', async () => {
-    await injectFirebaseAuth(mockPage as Page, validConfig, { waitAfter: 3000 });
+    it('should call page.goto after injection', async () => {
+      await provider.inject(mockPage as Page, validConfig);
 
-    expect(mockPage.waitForTimeout).toHaveBeenCalledWith(3000);
-  });
+      expect(mockPage.goto).toHaveBeenCalledWith('/', { waitUntil: 'networkidle' });
+    });
 
-  it('should use default waitAfter of 2000ms', async () => {
-    await injectFirebaseAuth(mockPage as Page, validConfig);
+    it('should wait after injection', async () => {
+      await provider.inject(mockPage as Page, validConfig, { waitAfter: 3000 });
 
-    expect(mockPage.waitForTimeout).toHaveBeenCalledWith(2000);
+      expect(mockPage.waitForTimeout).toHaveBeenCalledWith(3000);
+    });
+
+    it('should use default waitAfter of 2000ms', async () => {
+      await provider.inject(mockPage as Page, validConfig);
+
+      expect(mockPage.waitForTimeout).toHaveBeenCalledWith(2000);
+    });
   });
 
   describe('error handling', () => {
@@ -134,7 +165,7 @@ describe('injectFirebaseAuth', () => {
       vi.mocked(mockAuth.createCustomToken).mockRejectedValue(new Error('token error'));
 
       await expect(
-        injectFirebaseAuth(mockPage as Page, validConfig)
+        provider.inject(mockPage as Page, validConfig)
       ).rejects.toThrow(AuthenticationError);
     });
 
@@ -146,7 +177,7 @@ describe('injectFirebaseAuth', () => {
       });
 
       await expect(
-        injectFirebaseAuth(mockPage as Page, validConfig)
+        provider.inject(mockPage as Page, validConfig)
       ).rejects.toThrow(TokenExchangeError);
     });
 
@@ -155,7 +186,7 @@ describe('injectFirebaseAuth', () => {
       vi.mocked(mockAuth.getUser).mockRejectedValue(new Error('user not found'));
 
       await expect(
-        injectFirebaseAuth(mockPage as Page, validConfig)
+        provider.inject(mockPage as Page, validConfig)
       ).rejects.toThrow(AuthenticationError);
     });
   });
@@ -164,7 +195,7 @@ describe('injectFirebaseAuth', () => {
     it('should log messages when debug is true', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-      await injectFirebaseAuth(mockPage as Page, validConfig, { debug: true });
+      await provider.inject(mockPage as Page, validConfig, { debug: true });
 
       expect(consoleSpy).toHaveBeenCalled();
       const logMessages = consoleSpy.mock.calls.map(call => call[0]);
@@ -176,7 +207,7 @@ describe('injectFirebaseAuth', () => {
     it('should not log when debug is false', async () => {
       const consoleSpy = vi.spyOn(console, 'log').mockImplementation(() => {});
 
-      await injectFirebaseAuth(mockPage as Page, validConfig, { debug: false });
+      await provider.inject(mockPage as Page, validConfig, { debug: false });
 
       const logMessages = consoleSpy.mock.calls.map(call => call[0]);
       const authLogs = logMessages.filter(msg =>
@@ -189,7 +220,9 @@ describe('injectFirebaseAuth', () => {
   });
 });
 
-describe('injection script content', () => {
+describe('injection auth data', () => {
+  const provider = new FirebaseAuthProvider();
+
   const mockPage: Partial<Page> = {
     addInitScript: vi.fn(),
     goto: vi.fn(),
@@ -236,25 +269,26 @@ describe('injection script content', () => {
     });
   });
 
-  it('should include correct IndexedDB database name', async () => {
-    await injectFirebaseAuth(mockPage as Page, validConfig);
+  it('should include correct IndexedDB database name in auth data key', async () => {
+    await provider.inject(mockPage as Page, validConfig);
 
-    const script = vi.mocked(mockPage.addInitScript).mock.calls[0][0] as string;
-    expect(script).toContain('firebaseLocalStorageDb');
+    const [, authData] = vi.mocked(mockPage.addInitScript).mock.calls[0];
+    expect(authData.fbase_key).toContain('firebase:authUser:');
   });
 
-  it('should include correct object store name', async () => {
-    await injectFirebaseAuth(mockPage as Page, validConfig);
+  it('should include correct app name in auth data key', async () => {
+    await provider.inject(mockPage as Page, validConfig);
 
-    const script = vi.mocked(mockPage.addInitScript).mock.calls[0][0] as string;
-    expect(script).toContain('firebaseLocalStorage');
+    const [, authData] = vi.mocked(mockPage.addInitScript).mock.calls[0];
+    expect(authData.fbase_key).toContain('[DEFAULT]');
   });
 
-  it('should include Firebase auth key format', async () => {
-    await injectFirebaseAuth(mockPage as Page, validConfig);
+  it('should include user info in auth data value', async () => {
+    await provider.inject(mockPage as Page, validConfig);
 
-    const script = vi.mocked(mockPage.addInitScript).mock.calls[0][0] as string;
-    expect(script).toContain('firebase:authUser:');
-    expect(script).toContain('[DEFAULT]');
+    const [, authData] = vi.mocked(mockPage.addInitScript).mock.calls[0];
+    expect(authData.value).toHaveProperty('uid', 'test-uid');
+    expect(authData.value).toHaveProperty('email', 'test@example.com');
+    expect(authData.value).toHaveProperty('stsTokenManager');
   });
 });

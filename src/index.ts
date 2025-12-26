@@ -5,34 +5,10 @@
  */
 
 import type { Page } from '@playwright/test';
-import type {
-  AuthConfig,
-  FirebaseConfig,
-  SupabaseConfig,
-  InjectAuthOptions,
-  Provider,
-} from './types.js';
+import type { AuthConfig, InjectAuthOptions } from './types.js';
 import { loadConfig } from './config.js';
-import { injectFirebaseAuth } from './firebase.js';
 import { ConfigInvalidError } from './errors.js';
-
-/** Provider handler function type */
-type ProviderHandler = (
-  page: Page,
-  config: FirebaseConfig | SupabaseConfig,
-  options: { debug?: boolean; waitAfter?: number }
-) => Promise<void>;
-
-/** Provider registry */
-const providers: Record<Provider, ProviderHandler> = {
-  firebase: injectFirebaseAuth as ProviderHandler,
-  supabase: async () => {
-    throw new ConfigInvalidError(
-      'Supabase is not yet implemented. Please use Firebase.',
-      'provider'
-    );
-  },
-};
+import { getProvider } from './providers/index.js';
 
 // Re-export types
 export type {
@@ -108,14 +84,8 @@ export async function injectAuth(
 ): Promise<void> {
   const config = await loadConfig();
 
-  // Get handler for the specified provider
-  const handler = providers[config.provider];
-  if (!handler) {
-    throw new ConfigInvalidError(
-      `Unsupported provider: ${config.provider}`,
-      'provider'
-    );
-  }
+  // Get provider instance
+  const provider = getProvider(config.provider);
 
   // Get provider-specific config
   const providerConfig = config[config.provider];
@@ -132,7 +102,8 @@ export async function injectAuth(
       ? { ...providerConfig, ...config.profiles[options.profile] }
       : providerConfig;
 
-  await handler(page, effectiveConfig, {
+  // Use provider's inject method
+  await provider.inject(page, effectiveConfig, {
     debug: config.debug,
     waitAfter: options.waitAfter,
   });

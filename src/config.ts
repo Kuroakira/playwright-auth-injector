@@ -7,6 +7,7 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'node:path';
 import type { AuthConfig } from './types.js';
 import { ConfigNotFoundError, ConfigInvalidError } from './errors.js';
+import { getProvider } from './providers/index.js';
 
 /** Config file candidate paths */
 const CONFIG_FILE_NAMES = [
@@ -70,7 +71,7 @@ export async function loadConfig(cwd: string = process.cwd()): Promise<AuthConfi
 }
 
 /**
- * Validate config
+ * Validate config using provider-specific validation
  */
 function validateConfig(config: unknown): asserts config is AuthConfig {
   if (!config || typeof config !== 'object') {
@@ -91,71 +92,9 @@ function validateConfig(config: unknown): asserts config is AuthConfig {
     );
   }
 
-  // Validate provider-specific config
-  if (c.provider === 'firebase') {
-    validateFirebaseConfig(c.firebase);
-  } else if (c.provider === 'supabase') {
-    validateSupabaseConfig(c.supabase);
-  }
-}
-
-/**
- * Validate Firebase config
- */
-function validateFirebaseConfig(firebase: unknown): void {
-  if (!firebase || typeof firebase !== 'object') {
-    throw new ConfigInvalidError('firebase config is required', 'firebase');
-  }
-
-  const f = firebase as Record<string, unknown>;
-
-  if (!f.serviceAccount || typeof f.serviceAccount !== 'string') {
-    throw new ConfigInvalidError(
-      'serviceAccount must be a string',
-      'firebase.serviceAccount'
-    );
-  }
-
-  if (!f.apiKey || typeof f.apiKey !== 'string') {
-    throw new ConfigInvalidError(
-      'apiKey must be a string',
-      'firebase.apiKey'
-    );
-  }
-
-  if (!f.uid || typeof f.uid !== 'string') {
-    throw new ConfigInvalidError(
-      'uid must be a string',
-      'firebase.uid'
-    );
-  }
-}
-
-/**
- * Validate Supabase config
- */
-function validateSupabaseConfig(supabase: unknown): void {
-  if (!supabase || typeof supabase !== 'object') {
-    throw new ConfigInvalidError('supabase config is required', 'supabase');
-  }
-
-  const s = supabase as Record<string, unknown>;
-
-  if (!s.url || typeof s.url !== 'string') {
-    throw new ConfigInvalidError('url must be a string', 'supabase.url');
-  }
-
-  if (!s.anonKey || typeof s.anonKey !== 'string') {
-    throw new ConfigInvalidError('anonKey must be a string', 'supabase.anonKey');
-  }
-
-  if (!s.email || typeof s.email !== 'string') {
-    throw new ConfigInvalidError('email must be a string', 'supabase.email');
-  }
-
-  if (!s.password || typeof s.password !== 'string') {
-    throw new ConfigInvalidError('password must be a string', 'supabase.password');
-  }
+  // Use provider's validateConfig method
+  const provider = getProvider(c.provider);
+  provider.validateConfig(c[c.provider]);
 }
 
 /**
