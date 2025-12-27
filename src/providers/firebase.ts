@@ -1,5 +1,7 @@
 import type { Page } from "@playwright/test";
 import admin from "firebase-admin";
+import * as fs from "fs";
+import * as path from "path";
 import type { AuthProvider } from "./base.js";
 import type {
   FirebaseConfig,
@@ -7,6 +9,7 @@ import type {
   NextAuthConfig,
   FirebaseSignInResult,
   NextAuthSignInResult,
+  PlaywrightAuthConfig,
 } from "../types.js";
 
 // Firebase CDN URLs
@@ -31,7 +34,7 @@ export class FirebaseProvider implements AuthProvider {
   private testUser: TestUser;
   private nextAuth?: NextAuthConfig;
 
-  constructor(
+  private constructor(
     config: FirebaseConfig,
     testUser: TestUser,
     nextAuth?: NextAuthConfig
@@ -39,6 +42,85 @@ export class FirebaseProvider implements AuthProvider {
     this.config = config;
     this.testUser = testUser;
     this.nextAuth = nextAuth;
+  }
+
+  /**
+   * Create a FirebaseProvider from a configuration file.
+   * Loads, validates, and returns a ready-to-use provider.
+   */
+  static fromConfigFile(configPath: string): FirebaseProvider {
+    const absolutePath = path.isAbsolute(configPath)
+      ? configPath
+      : path.resolve(process.cwd(), configPath);
+
+    if (!fs.existsSync(absolutePath)) {
+      throw new Error(
+        `Configuration file not found: ${absolutePath}\n` +
+          `Please create the file from playwright.env.json.sample`
+      );
+    }
+
+    const content = fs.readFileSync(absolutePath, "utf-8");
+    let rawConfig: PlaywrightAuthConfig;
+
+    try {
+      rawConfig = JSON.parse(content);
+    } catch {
+      throw new Error(
+        `Failed to parse configuration file: ${absolutePath}\n` +
+          `Please ensure the file contains valid JSON`
+      );
+    }
+
+    // Validate provider type
+    if (rawConfig.provider !== "firebase") {
+      throw new Error(
+        `Invalid provider: expected "firebase", got "${rawConfig.provider}"`
+      );
+    }
+
+    // Validate Firebase config
+    FirebaseProvider.validate(rawConfig);
+
+    return new FirebaseProvider(
+      rawConfig.firebase!,
+      rawConfig.testUser,
+      rawConfig.nextAuth
+    );
+  }
+
+  /**
+   * Validate Firebase-specific configuration
+   */
+  private static validate(config: PlaywrightAuthConfig): void {
+    if (!config.testUser) {
+      throw new Error('Configuration must specify "testUser" field');
+    }
+
+    if (!config.firebase) {
+      throw new Error('Firebase provider requires "firebase" configuration');
+    }
+
+    if (!config.firebase.serviceAccount) {
+      throw new Error('Firebase configuration requires "serviceAccount"');
+    }
+
+    if (!config.firebase.clientConfig) {
+      throw new Error('Firebase configuration requires "clientConfig"');
+    }
+
+    const { clientConfig } = config.firebase;
+    const requiredClientFields = ["apiKey", "authDomain", "projectId"] as const;
+
+    for (const field of requiredClientFields) {
+      if (!(field in clientConfig)) {
+        throw new Error(`Firebase clientConfig requires "${field}"`);
+      }
+    }
+
+    if (!config.testUser.uid) {
+      throw new Error('Firebase authentication requires "testUser.uid"');
+    }
   }
 
   /**

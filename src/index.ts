@@ -1,10 +1,10 @@
 import { chromium } from "@playwright/test";
-import { loadConfig, ensureOutputDir } from "./utils/config-loader.js";
+import * as fs from "fs";
+import * as path from "path";
 import { FirebaseProvider } from "./providers/firebase.js";
 import { SupabaseProvider } from "./providers/supabase.js";
 import type { AuthProvider } from "./providers/base.js";
 import type { AuthSetupOptions, PlaywrightAuthConfig } from "./types.js";
-import * as path from "path";
 
 // Re-export types for library consumers
 export type {
@@ -22,28 +22,67 @@ export { FirebaseProvider } from "./providers/firebase.js";
 export { SupabaseProvider } from "./providers/supabase.js";
 
 /**
- * Create an authentication provider based on configuration
+ * Create an authentication provider from a configuration file.
+ *
+ * This function reads the config file, determines the provider type,
+ * and returns the appropriate provider instance.
+ *
+ * @example
+ * ```typescript
+ * import { createProviderFromConfigFile } from 'playwright-nextjs-auth';
+ *
+ * const provider = createProviderFromConfigFile('./playwright.env.json');
+ * await provider.signIn(page);
+ * ```
  */
-function createProvider(config: PlaywrightAuthConfig): AuthProvider {
-  switch (config.provider) {
+export function createProviderFromConfigFile(configPath: string): AuthProvider {
+  const absolutePath = path.isAbsolute(configPath)
+    ? configPath
+    : path.resolve(process.cwd(), configPath);
+
+  if (!fs.existsSync(absolutePath)) {
+    throw new Error(
+      `Configuration file not found: ${absolutePath}\n` +
+        `Please create the file from playwright.env.json.sample`
+    );
+  }
+
+  const content = fs.readFileSync(absolutePath, "utf-8");
+  let rawConfig: PlaywrightAuthConfig;
+
+  try {
+    rawConfig = JSON.parse(content);
+  } catch {
+    throw new Error(
+      `Failed to parse configuration file: ${absolutePath}\n` +
+        `Please ensure the file contains valid JSON`
+    );
+  }
+
+  if (!rawConfig.provider) {
+    throw new Error('Configuration must specify "provider" field');
+  }
+
+  switch (rawConfig.provider) {
     case "firebase":
-      if (!config.firebase) {
-        throw new Error("Firebase configuration is required");
-      }
-      return new FirebaseProvider(
-        config.firebase,
-        config.testUser,
-        config.nextAuth
-      );
+      return FirebaseProvider.fromConfigFile(configPath);
 
     case "supabase":
-      if (!config.supabase) {
-        throw new Error("Supabase configuration is required");
-      }
-      return new SupabaseProvider(config.supabase, config.testUser);
+      return SupabaseProvider.fromConfigFile(configPath);
 
     default:
-      throw new Error(`Unknown provider: ${config.provider}`);
+      throw new Error(
+        `Unknown provider: ${rawConfig.provider}. Supported: firebase, supabase`
+      );
+  }
+}
+
+/**
+ * Ensure output directory exists
+ */
+export function ensureOutputDir(outputDir: string): void {
+  if (!fs.existsSync(outputDir)) {
+    fs.mkdirSync(outputDir, { recursive: true });
   }
 }
 
@@ -78,10 +117,10 @@ export async function authSetup(options: AuthSetupOptions): Promise<void> {
     storageStateFile = "user.json",
   } = options;
 
-  // 1. Load and validate configuration
+  // 1. Create provider from config
   console.log(`[AuthSetup] Loading configuration from: ${configPath}`);
-  const config = loadConfig(configPath);
-  console.log(`[AuthSetup] Provider: ${config.provider}`);
+  const provider = createProviderFromConfigFile(configPath);
+  console.log(`[AuthSetup] Provider created`);
 
   // 2. Ensure output directory exists
   ensureOutputDir(outputDir);
@@ -96,14 +135,11 @@ export async function authSetup(options: AuthSetupOptions): Promise<void> {
   });
   const page = await context.newPage();
 
-  // 4. Create and execute provider
-  const provider = createProvider(config);
-
   try {
-    console.log(`[AuthSetup] Starting ${config.provider} authentication...`);
+    console.log("[AuthSetup] Starting authentication...");
     await provider.signIn(page);
 
-    // 5. Save storage state (including IndexedDB for Firebase)
+    // 4. Save storage state (including IndexedDB for Firebase)
     console.log(`[AuthSetup] Saving storage state to: ${storageStatePath}`);
     await context.storageState({
       path: storageStatePath,
@@ -118,27 +154,3 @@ export async function authSetup(options: AuthSetupOptions): Promise<void> {
     await browser.close();
   }
 }
-
-/**
- * Create an auth provider instance for advanced use cases.
- *
- * Use this when you need more control over the authentication flow,
- * such as using a custom browser context or page.
- *
- * @example
- * ```typescript
- * import { createAuthProvider, loadConfig } from 'playwright-nextjs-auth';
- *
- * const config = loadConfig('./playwright.env.json');
- * const provider = createAuthProvider(config);
- *
- * // Use with your own page
- * await provider.signIn(myPage);
- * ```
- */
-export function createAuthProvider(config: PlaywrightAuthConfig): AuthProvider {
-  return createProvider(config);
-}
-
-// Also export loadConfig for advanced usage
-export { loadConfig, ensureOutputDir } from "./utils/config-loader.js";

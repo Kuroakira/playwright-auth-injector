@@ -1,6 +1,8 @@
 import type { Page } from "@playwright/test";
+import * as fs from "fs";
+import * as path from "path";
 import type { AuthProvider } from "./base.js";
-import type { SupabaseConfig, TestUser } from "../types.js";
+import type { SupabaseConfig, TestUser, PlaywrightAuthConfig } from "../types.js";
 
 /**
  * Supabase Authentication Provider using API strategy.
@@ -18,9 +20,77 @@ export class SupabaseProvider implements AuthProvider {
   private config: SupabaseConfig;
   private testUser: TestUser;
 
-  constructor(config: SupabaseConfig, testUser: TestUser) {
+  private constructor(config: SupabaseConfig, testUser: TestUser) {
     this.config = config;
     this.testUser = testUser;
+  }
+
+  /**
+   * Create a SupabaseProvider from a configuration file.
+   * Loads, validates, and returns a ready-to-use provider.
+   */
+  static fromConfigFile(configPath: string): SupabaseProvider {
+    const absolutePath = path.isAbsolute(configPath)
+      ? configPath
+      : path.resolve(process.cwd(), configPath);
+
+    if (!fs.existsSync(absolutePath)) {
+      throw new Error(
+        `Configuration file not found: ${absolutePath}\n` +
+          `Please create the file from playwright.env.json.sample`
+      );
+    }
+
+    const content = fs.readFileSync(absolutePath, "utf-8");
+    let rawConfig: PlaywrightAuthConfig;
+
+    try {
+      rawConfig = JSON.parse(content);
+    } catch {
+      throw new Error(
+        `Failed to parse configuration file: ${absolutePath}\n` +
+          `Please ensure the file contains valid JSON`
+      );
+    }
+
+    // Validate provider type
+    if (rawConfig.provider !== "supabase") {
+      throw new Error(
+        `Invalid provider: expected "supabase", got "${rawConfig.provider}"`
+      );
+    }
+
+    // Validate Supabase config
+    SupabaseProvider.validate(rawConfig);
+
+    return new SupabaseProvider(rawConfig.supabase!, rawConfig.testUser);
+  }
+
+  /**
+   * Validate Supabase-specific configuration
+   */
+  private static validate(config: PlaywrightAuthConfig): void {
+    if (!config.testUser) {
+      throw new Error('Configuration must specify "testUser" field');
+    }
+
+    if (!config.supabase) {
+      throw new Error('Supabase provider requires "supabase" configuration');
+    }
+
+    if (!config.supabase.url) {
+      throw new Error('Supabase configuration requires "url"');
+    }
+
+    if (!config.supabase.anonKey) {
+      throw new Error('Supabase configuration requires "anonKey"');
+    }
+
+    if (!config.testUser.email || !config.testUser.password) {
+      throw new Error(
+        'Supabase authentication requires "testUser.email" and "testUser.password"'
+      );
+    }
   }
 
   /**

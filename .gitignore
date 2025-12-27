@@ -11,10 +11,13 @@ test-results/
 
 # Auth state (contains sensitive tokens)
 e2e/.auth/
+tests/e2e/.auth/*
+!tests/e2e/.auth/.gitkeep
 *.auth.json
 
 # Environment config (contains secrets)
 playwright.env.json
+tests/e2e/playwright.env.json
 
 # OS files
 .DS_Store
